@@ -9,8 +9,15 @@ import productRouter from "./routes/productRoute.js";
 // App Config
 const app = express();
 const port = process.env.PORT || 4000;
-connectDB();
-connectCloudinary();
+const startServer = async () => {
+  try {
+    await connectDB(); // Wait for MongoDB connection
+    await connectCloudinary(); // Wait for Cloudinary config
+    app.listen(port, () => console.log("Server started on PORT : " + port));
+  } catch (error) {
+    console.error("Failed to start server:", error);
+  }
+};
 
 // middlewares
 app.use(express.json());
@@ -24,6 +31,6 @@ app.get("/", (req, res) => {
   res.send("API Working");
 });
 
-app.listen(port, () => console.log("Server started on PORT : " + port));
+startServer();
 
 console.log("MongoDB URI:", process.env.MONGODB_URI);
