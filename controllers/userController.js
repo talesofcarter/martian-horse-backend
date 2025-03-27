@@ -25,8 +25,7 @@ const loginUser = async (req, res) => {
     } else {
       res.json({
         success: false,
-        message:
-          "The email or password you entered is incorrect. Please try again.",
+        message: "email or password incorrect",
       });
     }
   } catch (error) {
