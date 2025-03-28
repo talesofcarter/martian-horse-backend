@@ -1,4 +1,6 @@
 import orderModel from "../models/orderModel.js";
+import mpesa from "../config/mpesaConfig.js";
+
 // placing orders using POD method
 const placeOrder = async (req, res) => {
   try {
@@ -27,7 +29,90 @@ const placeOrder = async (req, res) => {
 };
 
 // placing orders using Mpesa
-const placeOrderMpesa = async (req, res) => {};
+const placeOrderMpesa = async (req, res) => {
+  try {
+    const { userId, items, amount, address } = req.body;
+
+    const orderData = {
+      userId,
+      items,
+      amount,
+      address,
+      paymentMethod: "mpesa",
+      payment: false,
+      date: Date.now(),
+    };
+
+    const newOrder = new orderModel(orderData);
+    await newOrder.save();
+
+    //STK Push
+    const phoneNumber = address.phone;
+    const accountReference = newOrder._id.toString();
+    const transactionDesc = "Payment for order";
+
+    const mpesaResponse = await mpesa.lipaNaMpesaOnline({
+      BusinessShortCode: process.env.MPESA_SHORTCODE,
+      Amount: amount,
+      PartyA: phoneNumber,
+      PartyB: process.env.MPESA_SHORTCODE,
+      PhoneNumber: phoneNumber,
+      CallBackURL: process.env.MPESA_CALLBACK_URL,
+      AccountReference: accountReference,
+      TransactionDesc: transactionDesc,
+    });
+
+    if (mpesaResponse.ResponseCode === "0") {
+      res.json({
+        success: true,
+        message: "STK Push initiated. Please enter your M-Pesa PIN.",
+        orderId: newOrder._id,
+        checkoutRequestID: mpesaResponse.CheckoutRequestID,
+      });
+    } else {
+      throw new Error("Failed to initiate STK Push");
+    }
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// M-pesa Callback Handler
+const mpesaCallBack = async (req, res) => {
+  try {
+    const callbackData = req.body.Body.stkCallback;
+    const { CheckoutRequestID, ResultCode, ResultDesc } = callbackData;
+
+    // Find order by CheckoutRequestID
+
+    const order = await orderModel.findOne({
+      checkoutRequestID: CheckoutRequestID,
+    });
+
+    if (!order) {
+      return res.json({ success: false, message: "Order not found" });
+    }
+
+    if (ResultCode === 0) {
+      //Payment successful
+      order.payment = true;
+      order.checkoutRequestID = CheckoutRequestID;
+      await order.save();
+
+      //Clear cart
+      await orderModel.findByIdAndUpdate(order.userId, { cartData: {} });
+      res.json({ success: true, message: "Payment confirmed" });
+    } else {
+      // Payment failed
+      console.log(`Payment failed: ${ResultDesc}`);
+      res.json({ success: false, message: ResultDesc });
+    }
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Callback processing failed" });
+  }
+};
 
 // placing order using Airtel Money
 const placeOrderAirtelMoney = async (req, res) => {};
@@ -76,4 +161,5 @@ export {
   allOrders,
   userOrders,
   updateStatus,
+  mpesaCallBack,
 };

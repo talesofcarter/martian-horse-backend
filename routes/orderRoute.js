@@ -6,8 +6,11 @@ import {
   allOrders,
   userOrders,
   updateStatus,
+  mpesaCallBack,
 } from "../controllers/orderController.js";
+
 import adminAuth from "../middleware/adminAuth.js";
+
 import authUser from "../middleware/auth.js";
 
 const orderRouter = express.Router();
@@ -20,6 +23,7 @@ orderRouter.post("/status", adminAuth, updateStatus);
 orderRouter.post("/place", authUser, placeOrder);
 orderRouter.post("/mpesa", authUser, placeOrderMpesa);
 orderRouter.post("/airtelmoney", authUser, placeOrderAirtelMoney);
+orderRouter.post("/callback", mpesaCallBack);
 
 // User features
 orderRouter.post("/userorders", authUser, userOrders);
