@@ -53,6 +53,7 @@ const placeOrderMpesa = async (req, res) => {
       address,
       paymentMethod: "mpesa",
       payment: false,
+      paymentStatus: "pending",
       date: Date.now(),
     };
     const newOrder = new orderModel(orderData);
@@ -71,6 +72,7 @@ const placeOrderMpesa = async (req, res) => {
       headers: { Authorization: auth },
     });
     const accessToken = tokenResponse.data.access_token;
+    console.log("Generated Access Token:", accessToken);
 
     // Step 2: Prepare STK Push payload
     const timestamp = moment().format("YYYYMMDDHHmmss");
@@ -79,14 +81,14 @@ const placeOrderMpesa = async (req, res) => {
     ).toString("base64");
 
     const stkPayload = {
-      BusinessShortCode: process.env.MPESA_SHORTCODE, // e.g., "174379"
+      BusinessShortCode: process.env.MPESA_SHORTCODE,
       Password: password,
       Timestamp: timestamp,
       TransactionType: "CustomerPayBillOnline",
-      Amount: amount.toString(), // Ensure this is a string
+      Amount: amount.toString(),
       PartyA: address.phone.startsWith("254")
         ? address.phone
-        : "254" + address.phone.slice(1), // Ensure 254 format
+        : "254" + address.phone.slice(1),
       PartyB: process.env.MPESA_SHORTCODE,
       PhoneNumber: address.phone.startsWith("254")
         ? address.phone
@@ -146,7 +148,6 @@ const mpesaCallBack = async (req, res) => {
     const { CheckoutRequestID, ResultCode, ResultDesc } = callbackData;
 
     // Find order by CheckoutRequestID
-
     const order = await orderModel.findOne({
       checkoutRequestID: CheckoutRequestID,
     });
@@ -162,6 +163,7 @@ const mpesaCallBack = async (req, res) => {
       case "0":
         // Payment successful
         order.payment = true;
+        order.paymentStatus = "completed";
         await order.save();
 
         // Clear user cart
@@ -193,6 +195,32 @@ const mpesaCallBack = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: "Callback processing failed" });
+  }
+};
+
+// Check order status
+const getOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const order = await orderModel.findById(orderId);
+
+    if (!order) {
+      return res.json({ success: false, message: "Order not found" });
+    }
+
+    res.json({
+      success: true,
+      paymentStatus: order.paymentStatus,
+      message:
+        order.paymentStatus === "completed"
+          ? "payment successful"
+          : order.paymentStatus === "pending"
+          ? "processing payment..."
+          : order.paymentStatus,
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
   }
 };
 
@@ -244,4 +272,5 @@ export {
   userOrders,
   updateStatus,
   mpesaCallBack,
+  getOrderStatus,
 };
