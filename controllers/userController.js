@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import validator from "validator";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
+import orderModel from "../models/orderModel.js";
 
 const createToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET);
@@ -109,6 +110,15 @@ const getUserProfile = async (req, res) => {
 
     if (!user) {
       return res.json({ success: false, message: "User not found" });
+    }
+
+    const orders = await orderModel.find({ userId }).sort({ date: 1 });
+
+    let address = user.address || {};
+
+    if (orders.length > 0 && !user.address) {
+      address = orders[0].address;
+      await userModel.updateOne({ _id: userId }, { $set: { address } });
     }
 
     res.json({

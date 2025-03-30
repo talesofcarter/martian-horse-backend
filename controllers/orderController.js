@@ -2,7 +2,6 @@ import axios from "axios";
 import moment from "moment";
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
-import mpesa from "../config/mpesaConfig.js";
 
 // placing orders using POD method
 const placeOrder = async (req, res) => {
