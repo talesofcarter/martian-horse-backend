@@ -101,4 +101,38 @@ const adminLogin = async (req, res) => {
   }
 };
 
-export { loginUser, registerUser, adminLogin };
+// Route for user profile
+const getUserProfile = async (req, res) => {
+  try {
+    const userId = req.body.userId;
+    const user = await userModel.findById(userId).select("-password");
+
+    if (!user) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        firstName: user.name.split(" ")[0],
+        lastName: user.name.split(" ").slice(1).join(" ") || "",
+        email: user.email,
+        phone: user.phone || "Not provided",
+        address: {
+          street: user.address?.street || "Not provided",
+          city: user.address?.city || "Not provided",
+          county: user.address?.county || "Not provided",
+          postalcode: user.address?.postalcode || "Not provided",
+          country: user.address?.country || "Not provided",
+        },
+        orders: user.orders,
+        joinedDate: user.joinedDate,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export { loginUser, registerUser, adminLogin, getUserProfile };
