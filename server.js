@@ -13,8 +13,8 @@ const app = express();
 const port = process.env.PORT || 4000;
 const startServer = async () => {
   try {
-    await connectDB(); // Wait for MongoDB connection
-    await connectCloudinary(); // Wait for Cloudinary config
+    await connectDB();
+    await connectCloudinary();
     app.listen(port, () => console.log("Server started on PORT : " + port));
   } catch (error) {
     console.error("Failed to start server:", error);
